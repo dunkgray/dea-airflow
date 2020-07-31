@@ -29,13 +29,15 @@ fc_products = [
     'ls8_fc_albers',
 ]
 
+# tags is in airflow >1.10.8
+# My local env is airflow 1.10.7...
 dag = DAG(
     'nci_fractional_cover',
     default_args=default_args,
     catchup=False,
     schedule_interval=None,
     default_view='graph',
-    tags=['nci', 'landsat_c2'],
+    #tags=['nci', 'landsat_c2'],
 )
 
 with dag:
