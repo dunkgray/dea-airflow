@@ -30,9 +30,9 @@ fc_products = [
 ]
 
 # tags is in airflow >1.10.8
-# My local env is airflow 1.10.7...
+# My local env is airflow 1.10.10...
 dag = DAG(
-    'nci_fractional_cover',
+    'nci_dsg',
     default_args=default_args,
     catchup=False,
     schedule_interval=None,
@@ -45,25 +45,29 @@ with dag:
     completed = DummyOperator(task_id='completed')
 
     COMMON = """
-        {% set work_dir = '/g/data/v10/work/' + params.product + '/' + ts_nodash %}
-
+        #  ts_nodash timestamp no dash.
+        {% set log_dir = '/home/547/dsg547/dump/airflow/' + ts_nodash %}
+        {% set work_dir = '/home/547/dsg547/dump/' %}
+    
         module use /g/data/v10/public/modules/modulefiles;
         module load {{ params.module }};
 
         """
 
-    product = 'the_shizzle'
-    test_tasks = SSHOperator(
+    product = 'used_by_params'
+    set_up = SSHOperator(
         command=COMMON + """
-        cd {{work_dir}}
-        datacube-fc run -vv --dry-run --input-filename {{work_dir}}/tasks.pickle
+        #cd {{work_dir}}/dea-manual-production
+        #ls
+        #mkdir -p {{ log_dir }}
+        mkdir {{ log_dir }}
         """,
         params={},
-        task_id=f'test_tasks_{product}',
+        task_id=f'set_up',
         timeout=60 * 20,
     )
 
-    submit_task_id = f'submit_C3_ARD'
+    submit_task_id = f'submit_fc_job'
     submit_fc_job = SSHOperator(
         task_id=submit_task_id,
         command=COMMON + """
@@ -91,10 +95,36 @@ with dag:
         do_xcom_push=True,
     )
     
+    submit_task_id = f'submit_ls'
+    submit_ls_job = SSHOperator(
+        task_id=submit_task_id,
+        command=COMMON + """
+        # TODO Should probably use an intermediate task here to calculate job size
+        # based on number of tasks.
+        # Although, if we run regularaly, it should be pretty consistent.
+        # Last time I checked, FC took about 30s per tile (task).
+        
+        cd {{work_dir}}
+        
+        qsub -N dsg_ls_{{ params.year }} \
+        -q {{ params.queue }} \
+        -W umask=33 \
+        -l wd,walltime=00:01:00,mem=190GB,ncpus=1 -m abe \
+        -l storage=gdata/v10+gdata/fk4+gdata/rs0+gdata/if87 \
+        -M duncan.gray@dea.ga.gov.au \
+        -P {{ params.project }} -o {{ log_dir }} -e {{ log_dir }} \
+        -- /bin/bash -l -c \
+        "module use /g/data/v10/public/modules/modulefiles/; \
+        ls"
+        """,
+        params={'product': product},
+        timeout=60 * 20,
+        do_xcom_push=True,
+    )
     wait_for_completion = PBSJobSensor(
         task_id=f'wait_for_{product}',
         pbs_job_id="{{ ti.xcom_pull(task_ids='%s') }}" % submit_task_id,
         timeout=60 * 60 * 24 * 7,
     )
     
-    start >> generate_tasks >> test_tasks >> submit_fc_job >> wait_for_completion >> completed
+    start >> set_up >> wait_for_completion >> completed
