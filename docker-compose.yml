@@ -2,6 +2,8 @@ version: '3.7'
 services:
   postgres:
     image: postgres:9.6
+    env_file:
+      - .env
     environment:
       - POSTGRES_USER=airflow
       - POSTGRES_PASSWORD=airflow
@@ -18,6 +20,8 @@ services:
     restart: always
     depends_on:
       - postgres
+    env_file:
+      - .env
     environment:
       - LOAD_EX=n
       # Uncomment and add fernet key to encrypt/decrypt secrets. For details see
