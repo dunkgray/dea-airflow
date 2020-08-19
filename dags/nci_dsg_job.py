@@ -32,7 +32,7 @@ fc_products = [
 # tags is in airflow >1.10.8
 # My local env is airflow 1.10.10...
 dag = DAG(
-    'nci_dsg',
+    'nci_dsg_job',
     default_args=default_args,
     catchup=False,
     schedule_interval=None,
@@ -47,7 +47,7 @@ with dag:
     COMMON = """
         #  ts_nodash timestamp no dash.
         {% set log_dir = '/home/547/dsg547/dump/airflow/' + ts_nodash %}
-        {% set work_dir = '/home/547/dsg547/dump/' %}
+        {% set work_dir = '/home/547/dsg547/dump/airflow' %}
     
         module use /g/data/v10/public/modules/modulefiles;
         module load {{ params.module }};
@@ -94,7 +94,8 @@ with dag:
         timeout=60 * 20,
         do_xcom_push=True,
     )
-    
+
+    # An example of how nci fc is done
     submit_task_id = f'submit_ls'
     submit_ls_job = SSHOperator(
         task_id=submit_task_id,
@@ -126,5 +127,9 @@ with dag:
         pbs_job_id="{{ ti.xcom_pull(task_ids='%s') }}" % submit_task_id,
         timeout=60 * 60 * 24 * 7,
     )
+    # A simple initial test
+    ls_task = SSHOperator(command="ls",
+        task_id=f'ls_task',
+        timeout=60 * 20,)
     
     start >> set_up >> wait_for_completion >> completed
