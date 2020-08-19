@@ -20,6 +20,7 @@ default_args = {
         'project': 'u46',
         'queue': 'normal',
         'module': 'dea/unstable',
+        'module_ass': 'ard-scene-select-py3-dea/20200814',
         'year': '2019'
     }
 }
@@ -49,18 +50,16 @@ with dag:
         {% set log_dir = '/home/547/dsg547/dump/airflow/' + ts_nodash %}
         {% set work_dir = '/home/547/dsg547/dump/airflow' %}
     
-        module use /g/data/v10/public/modules/modulefiles;
-        module load {{ params.module }};
+        #module use /g/data/v10/public/modules/modulefiles;
+        #module load {{ params.module }};
 
         """
 
     product = 'used_by_params'
     set_up = SSHOperator(
         command=COMMON + """
-        #cd {{work_dir}}/dea-manual-production
-        #ls
-        #mkdir -p {{ log_dir }}
-        mkdir {{ log_dir }}
+        # make the dir here so the output from the submit task is minimal
+        mkdir -p {{ log_dir }}
         """,
         params={},
         task_id=f'set_up',
@@ -95,7 +94,7 @@ with dag:
         do_xcom_push=True,
     )
 
-    # An example of how nci fc is done
+    # An example of remotely starting a qsub job (all it does is ls)
     submit_task_id = f'submit_ls'
     submit_ls_job = SSHOperator(
         task_id=submit_task_id,
@@ -118,7 +117,59 @@ with dag:
         "module use /g/data/v10/public/modules/modulefiles/; \
         ls"
         """,
-        params={'product': product},
+        timeout=60 * 20,
+        do_xcom_push=True,
+    )
+
+    # An example of remotely starting a qsub job (all it does is ls)
+    submit_task_id = f'submit_help'
+    submit_ls_job = SSHOperator(
+        task_id=submit_task_id,
+        command=COMMON + """
+        mkdir -p {{ log_dir }} # remove this later.
+        cd {{work_dir}} # no need to do this
+        
+        qsub -N ard_scene_select \
+              -q  {{ params.queue }}  \
+              -W umask=33 \
+              -l wd,walltime=0:30:00,mem=15GB,ncpus=1 -m abe \
+              -l storage=gdata/v10+scratch/v10+gdata/if87+gdata/fj7+scratch/fj7+scratch/u46+gdata/u46 \
+              -P  {{ params.project }} -o {{ log_dir }} -e {{ log_dir }}  \
+              -- /bin/bash -l -c \
+                  "module use /g/data/v10/public/modules/modulefiles/; \
+                  module use /g/data/v10/private/modules/modulefiles/; \
+                  module load {{ params.module_ass }}; \
+                  ard-scene-select --help"
+        """,
+        timeout=60 * 20,
+        do_xcom_push=True,
+    )
+
+    # An example of remotely starting a qsub job (all it does is ls)
+    submit_task_id = f'submit_non_prod'
+    submit_ls_job = SSHOperator(
+        task_id=submit_task_id,
+        command=COMMON + """
+        mkdir -p {{ log_dir }} # remove this later.
+        cd {{work_dir}} # no need to do this
+        
+        qsub -N ard_scene_select \
+              -q  {{ params.queue }}  \
+              -W umask=33 \
+              -l wd,walltime=0:30:00,mem=15GB,ncpus=1 -m abe \
+              -l storage=gdata/v10+scratch/v10+gdata/if87+gdata/fj7+scratch/fj7+scratch/u46+gdata/u46 \
+              -P  {{ params.project }} -o {{ log_dir }} -e {{ log_dir }}  \
+              -- /bin/bash -l -c \
+                  "module use /g/data/v10/public/modules/modulefiles/; \
+                  module use /g/data/v10/private/modules/modulefiles/; \
+                  module load {{ params.module_ass }}; \
+                  ard-scene-select --workdir {{ log_dir }} \
+                  --pkgdir {{ log_dir }} --logdir {{ log_dir }} \
+                  --env $INIT_PWD/prod-wagl.env \
+                  --index-datacube-env $INIT_PWD/index-datacube.env \
+                   --project u46 \
+                   --walltime 01:00:00"
+        """,
         timeout=60 * 20,
         do_xcom_push=True,
     )
