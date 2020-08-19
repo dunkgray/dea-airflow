@@ -21,14 +21,10 @@ default_args = {
         'queue': 'normal',
         'module': 'dea/unstable',
         'module_ass': 'ard-scene-select-py3-dea/20200814',
-        'year': '2019'
+        'index_env': '/g/data/v10/projects/c3_ard/dea-ard-scene-select/scripts/prod/ard_env/index-datacube.env',
+        'wagl_env': '/g/data/v10/projects/c3_ard/dea-ard-scene-select/scripts/prod/ard_env/prod-wagl.env',
     }
 }
-
-fc_products = [
-    'ls7_fc_albers',
-    'ls8_fc_albers',
-]
 
 # tags is in airflow >1.10.8
 # My local env is airflow 1.10.10...
@@ -165,14 +161,15 @@ with dag:
                   module load {{ params.module_ass }}; \
                   ard-scene-select --workdir {{ log_dir }} \
                   --pkgdir {{ log_dir }} --logdir {{ log_dir }} \
-                  --env $INIT_PWD/prod-wagl.env \
-                  --index-datacube-env $INIT_PWD/index-datacube.env \
-                   --project u46 \
-                   --walltime 01:00:00"
+                  --env {{ params.wagl_env }}  \
+                  --index-datacube-env {{ params.index_env }}  \
+                   --project {{ params.project }} \
+                   --walltime 05:00:00"
         """,
         timeout=60 * 20,
         do_xcom_push=True,
     )
+
     wait_for_completion = PBSJobSensor(
         task_id=f'wait_for_{product}',
         pbs_job_id="{{ ti.xcom_pull(task_ids='%s') }}" % submit_task_id,
