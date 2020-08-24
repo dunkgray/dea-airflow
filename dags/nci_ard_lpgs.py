@@ -9,6 +9,8 @@ from airflow.operators.dummy_operator import DummyOperator
 
 from sensors.pbs_job_complete_sensor import PBSJobSensor
 
+ls
+
 default_args = {
     'owner': 'Duncan Gray',
     'depends_on_past': False,  # Very important, will cause a single failure to propagate forever
@@ -18,10 +20,11 @@ default_args = {
     #'ssh_conn_id': 'lpgs_gadi',
     'ssh_conn_id': 'dsg547',
     'params': {
-        'project': 'v10',
+        'project': 'u46',
         'queue': 'normal',
-        'module_ass': 'ard-scene-select-py3-dea/20200814',
+        'module_ass': 'ard-scene-select-py3-dea',
         'index_arg': '--index-datacube-env /g/data/v10/projects/c3_ard/dea-ard-scene-select/scripts/prod/ard_env/index-datacube.env',
+        'wagl_env': '/g/data/v10/projects/c3_ard/dea-ard-scene-select/scripts/prod/ard_env/prod-wagl.env',
         'wagl_env': '/g/data/v10/projects/c3_ard/dea-ard-scene-select/scripts/prod/ard_env/prod-wagl.env',
     }
 }
@@ -43,10 +46,10 @@ with dag:
 
     COMMON = """
         #  ts_nodash timestamp no dashes.
-        #{% set log_dir = '/g/data/v10/Landsat-Collection-3-ops/scene_select_test/' + ts_nodash + '/logdir' %}
-        #{% set work_dir = '/g/data/v10/Landsat-Collection-3-ops/scene_select_test/' + ts_nodash + '/workdir' %}
-        {% set log_dir = '/home/547/dsg547/dump/airflow/' + ts_nodash + '/logdir' %}
-        {% set work_dir = '/home/547/dsg547/dump/airflow/' + ts_nodash + '/workdir' %}
+        {% set log_dir = '/g/data/v10/Landsat-Collection-3-ops/scene_select_test/' + ts_nodash + '/logdir' %}
+        {% set work_dir = '/g/data/v10/Landsat-Collection-3-ops/scene_select_test/' + ts_nodash + '/workdir' %}
+        {% set log_dir = '/g/data/u46/users/dsg547/results_airflow' + ts_nodash + '/logdir' %}
+        {% set work_dir = '/g/data/u46/users/dsg547/results_airflow' + ts_nodash + '/workdir' %}
         """
 
     product = 'used_by_params'
